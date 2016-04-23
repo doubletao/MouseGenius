@@ -3,7 +3,31 @@
 //
 
 #pragma once
+#include <vector>
 
+const int MSG_SET_RUNNING_BTN_STATE = WM_USER + 1;
+
+enum EmAction
+{
+	EmErrAction,
+	EmLButtonDown,
+	EmLButtonUp,
+	EmRButtonDown,
+	EmRButtonUp,
+	EmSleep,
+};
+
+struct ActionRecord
+{
+	EmAction action;
+	int nValue1;
+	int nValue2;
+	ActionRecord()
+		: action(EmErrAction)
+		, nValue1(0)
+		, nValue2(0)
+	{}
+};
 
 // CMouseGeniusDlg 对话框
 class CMouseGeniusDlg : public CDialogEx
@@ -23,13 +47,18 @@ public:
 // 实现
 protected:
 	HICON m_hIcon;
-
-	BOOL bRunning;
+	BOOL m_bRunning;
+	CEvent m_EventRunning;
+	CWinThread * m_pThreadRunning;
+	static UINT ThreadRunningFun(LPVOID pParam);
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
+	void StartRunning();
+	void StopRunning();
+	std::vector<ActionRecord> ActionInfoAnylise();
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedBtnRecord();
@@ -37,4 +66,5 @@ public:
 	afx_msg void OnBnClickedBtnSave();
 	afx_msg void OnBnClickedBtnOpen();
 	afx_msg void OnBnClickedBtnSetting();
+	afx_msg LRESULT OnSetRunningBtnState(WPARAM wParam, LPARAM lParam);
 };

@@ -130,7 +130,9 @@ BOOL UninstallKbHook()
 
 CMouseGeniusDlg::CMouseGeniusDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CMouseGeniusDlg::IDD, pParent)
-	, bRunning(FALSE)
+	, m_bRunning(FALSE)
+	, m_pThreadRunning(NULL)
+	, m_EventRunning(FALSE, TRUE, 0, 0)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
@@ -155,6 +157,7 @@ BEGIN_MESSAGE_MAP(CMouseGeniusDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BTN_SAVE, &CMouseGeniusDlg::OnBnClickedBtnSave)
 	ON_BN_CLICKED(IDC_BTN_OPEN, &CMouseGeniusDlg::OnBnClickedBtnOpen)
 	ON_BN_CLICKED(IDC_BTN_SETTING, &CMouseGeniusDlg::OnBnClickedBtnSetting)
+	ON_MESSAGE(MSG_SET_RUNNING_BTN_STATE, OnSetRunningBtnState)
 END_MESSAGE_MAP()
 
 
@@ -212,7 +215,7 @@ HCURSOR CMouseGeniusDlg::OnQueryDragIcon()
 
 void CMouseGeniusDlg::OnBnClickedBtnRecord()
 {
-	if (bRunning)
+	if (m_bRunning)
 	{
 		AfxMessageBox(_T("运行中不能录制。"));
 		return;
@@ -225,6 +228,7 @@ void CMouseGeniusDlg::OnBnClickedBtnRecord()
 		{
 			pButtonRecord->SetWindowText(_T("停止录制"));
 		}
+		g_nClock = clock();
 	}
 	else
 	{
@@ -245,23 +249,13 @@ void CMouseGeniusDlg::OnBnClickedBtnRun()
 		AfxMessageBox(_T("录制中不能运行。"));
 		return;
 	}
-	if (bRunning)
+	if (m_bRunning)
 	{
-		bRunning = FALSE;
-		CWnd * pButtonRun = GetDlgItem(IDC_BTN_RUN);
-		if (pButtonRun && ::IsWindow(pButtonRun->GetSafeHwnd()))
-		{
-			pButtonRun->SetWindowText(_T("开始运行"));
-		}
+		StopRunning();
 	}
 	else
 	{
-		bRunning = TRUE;
-		CWnd * pButtonRun = GetDlgItem(IDC_BTN_RUN);
-		if (pButtonRun && ::IsWindow(pButtonRun->GetSafeHwnd()))
-		{
-			pButtonRun->SetWindowText(_T("停止运行"));
-		}
+		StartRunning();
 	}
 }
 
@@ -319,4 +313,163 @@ void CMouseGeniusDlg::OnBnClickedBtnOpen()
 void CMouseGeniusDlg::OnBnClickedBtnSetting()
 {
 	AfxMessageBox(_T("功能尚未实现。"));
+}
+
+UINT CMouseGeniusDlg::ThreadRunningFun( LPVOID pParam )
+{
+	CMouseGeniusDlg * pThis = (CMouseGeniusDlg *)pParam;
+	if (pThis)
+	{
+		pThis->PostMessage(MSG_SET_RUNNING_BTN_STATE, 0, 0);
+		std::vector<ActionRecord> vecRecord  = pThis->ActionInfoAnylise();
+		for(UINT i = 0; i < vecRecord.size(); i++)
+		{
+			BOOL bStop = FALSE;
+			switch(vecRecord[i].action)
+			{
+			case EmLButtonDown:
+				SetCursorPos(vecRecord[i].nValue1, vecRecord[i].nValue2);
+				mouse_event(MOUSEEVENTF_LEFTDOWN,0,0,0,0);
+				break;
+			case EmLButtonUp:
+				SetCursorPos(vecRecord[i].nValue1, vecRecord[i].nValue2);
+				mouse_event(MOUSEEVENTF_LEFTUP,0,0,0,0);
+				break;
+			case EmRButtonDown:
+				SetCursorPos(vecRecord[i].nValue1, vecRecord[i].nValue2);
+				mouse_event(MOUSEEVENTF_RIGHTDOWN,0,0,0,0);
+				break;
+			case EmRButtonUp:
+				SetCursorPos(vecRecord[i].nValue1, vecRecord[i].nValue2);
+				mouse_event(MOUSEEVENTF_RIGHTUP,0,0,0,0);
+				break;
+			case EmSleep:
+				if (WaitForSingleObject(pThis->m_EventRunning, vecRecord[i].nValue1) == WAIT_OBJECT_0)
+				{
+					bStop = TRUE;
+				}
+				break;
+			default:
+				break;
+			}
+			if (bStop)
+			{
+				break;
+			}
+		}
+		pThis->PostMessage(MSG_SET_RUNNING_BTN_STATE, 1, 0);
+	}
+	return 0;
+}
+
+void CMouseGeniusDlg::StartRunning()
+{
+	StopRunning();
+	m_EventRunning.ResetEvent();
+	m_pThreadRunning = AfxBeginThread(ThreadRunningFun, this);
+}
+
+void CMouseGeniusDlg::StopRunning()
+{
+	m_EventRunning.SetEvent();
+	if (m_pThreadRunning)
+	{
+		WaitForSingleObject(m_pThreadRunning->m_hThread, INFINITE);
+	}
+	m_pThreadRunning = NULL;
+}
+
+std::vector<ActionRecord> CMouseGeniusDlg::ActionInfoAnylise()
+{
+	std::vector<ActionRecord> vecRet;
+	CEdit * pEditScript = (CEdit *)GetDlgItem(IDC_EDIT_SCRIPT);
+	if (pEditScript && ::IsWindow(pEditScript->GetSafeHwnd()))
+	{
+		int nLineCount = pEditScript->GetLineCount();
+		for (int i = 0; i < nLineCount; i++)
+		{
+			ActionRecord actionRecord;
+			TCHAR tstrLine[1024];
+			memset(tstrLine, 0, 1024 * sizeof(TCHAR));
+			pEditScript->GetLine(i, tstrLine, 1024);
+			CString strLine = tstrLine;
+			int nColonPos = strLine.Find(_T(":"));
+			if (nColonPos < 0)
+			{
+				//没找到冒号，不规范，不玩了
+				continue;
+			}
+			int nCommaPos = strLine.Find(_T(","));
+			CString strAction = strLine.Mid(0, nColonPos);
+			if (strAction == g_strSleep)
+			{
+				actionRecord.action = EmSleep;
+			}
+			else if (strAction == g_strLButtonDown)
+			{
+				actionRecord.action = EmLButtonDown;
+			}
+			else if (strAction == g_strLButtonUp)
+			{
+				actionRecord.action = EmLButtonUp;
+			}
+			else if (strAction == g_strRButtonDown)
+			{
+				actionRecord.action = EmRButtonDown;
+			}
+			else if (strAction == g_strRButtonUp)
+			{
+				actionRecord.action = EmRButtonUp;
+			}
+			else
+			{
+				//动作写错了，不玩了
+				continue;
+			}
+			if (actionRecord.action != EmSleep && nCommaPos <= nColonPos)
+			{
+				//除了sleep之外，逗号和冒号之间一定有东西，否则不规范
+				continue;
+			}
+			if (actionRecord.action == EmSleep)
+			{
+				CString strSleepTime = strLine.Mid(nColonPos + 1);
+				actionRecord.nValue1 = _ttoi(strSleepTime);
+			}
+			else
+			{
+				CString strXPos = strLine.Mid(nColonPos + 1, nCommaPos - nColonPos - 1);
+				CString strYPos = strLine.Mid(nCommaPos + 1);
+				actionRecord.nValue1 = _ttoi(strXPos);
+				actionRecord.nValue2 = _ttoi(strYPos);
+			}
+			vecRet.push_back(actionRecord);
+		}
+	}
+	return vecRet;
+}
+
+LRESULT CMouseGeniusDlg::OnSetRunningBtnState( WPARAM wParam, LPARAM lParam )
+{
+	if (wParam)
+	{
+		CWnd * pButtonRun = NULL;
+		pButtonRun = GetDlgItem(IDC_BTN_RUN);
+		if (pButtonRun && ::IsWindow(pButtonRun->GetSafeHwnd()))
+		{
+			pButtonRun->SetWindowText(_T("开始运行"));
+		}
+		m_bRunning = FALSE;
+	}
+	else
+	{
+		CWnd * pButtonRun = NULL;
+		pButtonRun = GetDlgItem(IDC_BTN_RUN);
+		if (pButtonRun && ::IsWindow(pButtonRun->GetSafeHwnd()))
+		{
+			pButtonRun->SetWindowText(_T("停止运行"));
+		}
+		m_bRunning = TRUE;
+	}
+	return 0;
 }
