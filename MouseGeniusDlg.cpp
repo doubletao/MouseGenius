@@ -43,32 +43,52 @@ LRESULT CALLBACK LowLevelMouseProc (INT nCode, WPARAM wParam, LPARAM lParam)
 				{
 					if (wParam == WM_LBUTTONUP) 
 					{
+						int nLength = 0;
+						strMsg.Format(_T("%s:%d\n"), g_strSleep, clock() - g_nClock);g_nClock = clock();
+						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
+						pEdit->SetSel(nLength,  nLength);  
+						pEdit->ReplaceSel(strMsg);
 						strMsg.Format(_T("%s:%d,%d\n"), g_strLButtonUp, pkbhs->pt.x, pkbhs->pt.y);
-						int nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
+						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
 						pEdit->SetSel(nLength,  nLength);  
 						pEdit->ReplaceSel(strMsg);
 					}
 
 					if(wParam == WM_LBUTTONDOWN)
 					{
+						int nLength = 0;
+						strMsg.Format(_T("%s:%d\n"), g_strSleep, clock() - g_nClock);g_nClock = clock();
+						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
+						pEdit->SetSel(nLength,  nLength);  
+						pEdit->ReplaceSel(strMsg);
 						strMsg.Format(_T("%s:%d,%d\n"), g_strLButtonDown, pkbhs->pt.x, pkbhs->pt.y);
-						int nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
+						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
 						pEdit->SetSel(nLength,  nLength);  
 						pEdit->ReplaceSel(strMsg);
 					}
 
 					if (wParam == WM_RBUTTONUP) 
 					{
+						int nLength = 0;
+						strMsg.Format(_T("%s:%d\n"), g_strSleep, clock() - g_nClock);g_nClock = clock();
+						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
+						pEdit->SetSel(nLength,  nLength);  
+						pEdit->ReplaceSel(strMsg);
 						strMsg.Format(_T("%s:%d,%d\n"), g_strRButtonUp, pkbhs->pt.x, pkbhs->pt.y);
-						int nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
+						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
 						pEdit->SetSel(nLength,  nLength);  
 						pEdit->ReplaceSel(strMsg);
 					}
 
 					if(wParam == WM_RBUTTONDOWN)
 					{
+						int nLength = 0;
+						strMsg.Format(_T("%s:%d\n"), g_strSleep, clock() - g_nClock);g_nClock = clock();
+						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
+						pEdit->SetSel(nLength,  nLength);  
+						pEdit->ReplaceSel(strMsg);
 						strMsg.Format(_T("%s:%d,%d\n"), g_strRButtonDown, pkbhs->pt.x, pkbhs->pt.y);
-						int nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
+						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
 						pEdit->SetSel(nLength,  nLength);  
 						pEdit->ReplaceSel(strMsg);
 					}
@@ -110,6 +130,7 @@ BOOL UninstallKbHook()
 
 CMouseGeniusDlg::CMouseGeniusDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CMouseGeniusDlg::IDD, pParent)
+	, bRunning(FALSE)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
@@ -191,6 +212,11 @@ HCURSOR CMouseGeniusDlg::OnQueryDragIcon()
 
 void CMouseGeniusDlg::OnBnClickedBtnRecord()
 {
+	if (bRunning)
+	{
+		AfxMessageBox(_T("运行中不能录制。"));
+		return;
+	}
 	if (hhookMs == NULL)
 	{
 		InstallKbHook();
@@ -208,15 +234,34 @@ void CMouseGeniusDlg::OnBnClickedBtnRecord()
 		{
 			pButtonRecord->SetWindowText(_T("开始录制"));
 		}
+		g_nClock = clock();
 	}
 }
 
 void CMouseGeniusDlg::OnBnClickedBtnRun()
 {
-	CWnd * pButtonRecord = GetDlgItem(IDC_BTN_RECORD);
-	if (pButtonRecord && ::IsWindow(pButtonRecord->GetSafeHwnd()))
+	if (hhookMs != NULL)
 	{
-		pButtonRecord->SetWindowText(_T("停止运行"));
+		AfxMessageBox(_T("录制中不能运行。"));
+		return;
+	}
+	if (bRunning)
+	{
+		bRunning = FALSE;
+		CWnd * pButtonRun = GetDlgItem(IDC_BTN_RUN);
+		if (pButtonRun && ::IsWindow(pButtonRun->GetSafeHwnd()))
+		{
+			pButtonRun->SetWindowText(_T("开始运行"));
+		}
+	}
+	else
+	{
+		bRunning = TRUE;
+		CWnd * pButtonRun = GetDlgItem(IDC_BTN_RUN);
+		if (pButtonRun && ::IsWindow(pButtonRun->GetSafeHwnd()))
+		{
+			pButtonRun->SetWindowText(_T("停止运行"));
+		}
 	}
 }
 

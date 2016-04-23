@@ -24,6 +24,8 @@ public:
 protected:
 	HICON m_hIcon;
 
+	BOOL bRunning;
+
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
 	afx_msg void OnPaint();
