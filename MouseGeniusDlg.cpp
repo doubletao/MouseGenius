@@ -34,8 +34,8 @@ LRESULT CALLBACK LowLevelMouseProc (INT nCode, WPARAM wParam, LPARAM lParam)
 
 	if (pWnd && ::IsWindow(pWnd->GetSafeHwnd()))
 	{
-		CEdit * pEdit = (CEdit *)pWnd->GetDlgItem(IDC_EDIT_SCRIPT);
-		if (pEdit && ::IsWindow(pEdit->GetSafeHwnd()))
+		CListCtrl * pList = (CListCtrl *)pWnd->GetDlgItem(IDC_LIST_ACTION_RECORD);
+		if (pList && ::IsWindow(pList->GetSafeHwnd()))
 		{
 			switch (nCode)
 			{
@@ -44,53 +44,41 @@ LRESULT CALLBACK LowLevelMouseProc (INT nCode, WPARAM wParam, LPARAM lParam)
 					if (wParam == WM_LBUTTONUP) 
 					{
 						int nLength = 0;
-						strMsg.Format(_T("%s:%d\n"), g_strSleep, clock() - g_nClock);g_nClock = clock();
-						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
-						pEdit->SetSel(nLength,  nLength);  
-						pEdit->ReplaceSel(strMsg);
-						strMsg.Format(_T("%s:%d,%d\n"), g_strLButtonUp, pkbhs->pt.x, pkbhs->pt.y);
-						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
-						pEdit->SetSel(nLength,  nLength);  
-						pEdit->ReplaceSel(strMsg);
+						strMsg.Format(_T("%s:%d"), g_strSleep, clock() - g_nClock);g_nClock = clock();
+						pList->InsertItem(pList->GetItemCount(), strMsg);
+						strMsg.Format(_T("%s:%d,%d"), g_strLButtonUp, pkbhs->pt.x, pkbhs->pt.y);
+						pList->InsertItem(pList->GetItemCount(), strMsg);
+						pList->EnsureVisible(pList->GetItemCount() - 1, FALSE);
 					}
 
 					if(wParam == WM_LBUTTONDOWN)
 					{
 						int nLength = 0;
-						strMsg.Format(_T("%s:%d\n"), g_strSleep, clock() - g_nClock);g_nClock = clock();
-						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
-						pEdit->SetSel(nLength,  nLength);  
-						pEdit->ReplaceSel(strMsg);
-						strMsg.Format(_T("%s:%d,%d\n"), g_strLButtonDown, pkbhs->pt.x, pkbhs->pt.y);
-						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
-						pEdit->SetSel(nLength,  nLength);  
-						pEdit->ReplaceSel(strMsg);
+						strMsg.Format(_T("%s:%d"), g_strSleep, clock() - g_nClock);g_nClock = clock();
+						pList->InsertItem(pList->GetItemCount(), strMsg);
+						strMsg.Format(_T("%s:%d,%d"), g_strLButtonDown, pkbhs->pt.x, pkbhs->pt.y);
+						pList->InsertItem(pList->GetItemCount(), strMsg);
+						pList->EnsureVisible(pList->GetItemCount() - 1, FALSE);
 					}
 
 					if (wParam == WM_RBUTTONUP) 
 					{
 						int nLength = 0;
-						strMsg.Format(_T("%s:%d\n"), g_strSleep, clock() - g_nClock);g_nClock = clock();
-						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
-						pEdit->SetSel(nLength,  nLength);  
-						pEdit->ReplaceSel(strMsg);
-						strMsg.Format(_T("%s:%d,%d\n"), g_strRButtonUp, pkbhs->pt.x, pkbhs->pt.y);
-						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
-						pEdit->SetSel(nLength,  nLength);  
-						pEdit->ReplaceSel(strMsg);
+						strMsg.Format(_T("%s:%d"), g_strSleep, clock() - g_nClock);g_nClock = clock();
+						pList->InsertItem(pList->GetItemCount(), strMsg);
+						strMsg.Format(_T("%s:%d,%d"), g_strRButtonUp, pkbhs->pt.x, pkbhs->pt.y);
+						pList->InsertItem(pList->GetItemCount(), strMsg);
+						pList->EnsureVisible(pList->GetItemCount() - 1, FALSE);
 					}
 
 					if(wParam == WM_RBUTTONDOWN)
 					{
 						int nLength = 0;
-						strMsg.Format(_T("%s:%d\n"), g_strSleep, clock() - g_nClock);g_nClock = clock();
-						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
-						pEdit->SetSel(nLength,  nLength);  
-						pEdit->ReplaceSel(strMsg);
-						strMsg.Format(_T("%s:%d,%d\n"), g_strRButtonDown, pkbhs->pt.x, pkbhs->pt.y);
-						nLength = pEdit->SendMessage(WM_GETTEXTLENGTH);  
-						pEdit->SetSel(nLength,  nLength);  
-						pEdit->ReplaceSel(strMsg);
+						strMsg.Format(_T("%s:%d"), g_strSleep, clock() - g_nClock);g_nClock = clock();
+						pList->InsertItem(pList->GetItemCount(), strMsg);
+						strMsg.Format(_T("%s:%d,%d"), g_strRButtonDown, pkbhs->pt.x, pkbhs->pt.y);
+						pList->InsertItem(pList->GetItemCount(), strMsg);
+						pList->EnsureVisible(pList->GetItemCount() - 1, FALSE);
 					}
 				}
 			default:
@@ -172,7 +160,14 @@ BOOL CMouseGeniusDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
-	// TODO: 在此添加额外的初始化代码
+	CListCtrl * pList = (CListCtrl *)GetDlgItem(IDC_LIST_ACTION_RECORD);
+	if (pList && ::IsWindow(pList->GetSafeHwnd()))
+	{
+		CRect rtList;
+		pList->GetWindowRect(rtList);
+		pList->InsertColumn(0, _T("动作"), 0, rtList.Width() - 30);
+		pList->SetExtendedStyle(pList->GetExtendedStyle() | LVS_EX_DOUBLEBUFFER | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+	}
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -261,21 +256,20 @@ void CMouseGeniusDlg::OnBnClickedBtnRun()
 
 void CMouseGeniusDlg::OnBnClickedBtnSave()
 {
-	CFileDialog dialog(FALSE, _T(".mgs"), NULL, OFN_FILEMUSTEXIST|OFN_ENABLESIZING, _T("脚本文件(*.mgs)|*.mgs|"), NULL);
+	CFileDialog dialog(FALSE, _T(".mgs"), NULL, OFN_FILEMUSTEXIST|OFN_ENABLESIZING, _T("脚本文件(*.txt)|*.txt|"), NULL);
 	if (dialog.DoModal() == IDOK)
 	{
 		CString strName = dialog.GetPathName();
-		CEdit * pEditScript = (CEdit *)GetDlgItem(IDC_EDIT_SCRIPT);
-		if (pEditScript && ::IsWindow(pEditScript->GetSafeHwnd()))
+		CListCtrl * pList = (CListCtrl *)GetDlgItem(IDC_LIST_ACTION_RECORD);
+		if (pList && ::IsWindow(pList->GetSafeHwnd()))
 		{
 			CStdioFile file;
 			file.Open(strName, CFile::modeCreate | CFile::modeWrite);
-			int nLineCount = pEditScript->GetLineCount();
+			int nLineCount = pList->GetItemCount();
 			for (int i = 0; i < nLineCount; i++)
 			{
-				TCHAR strLine[1024];
-				memset(strLine, 0, 1024 * sizeof(TCHAR));
-				int nSize = pEditScript->GetLine(i, strLine, 1024);
+				CString strLine;
+				strLine = pList->GetItemText(i, 0);
 				file.WriteString(strLine);
 				file.WriteString(_T("\n"));
 			}
@@ -288,22 +282,20 @@ const int nBufferSize = 1024 * 1024 * 10;
 
 void CMouseGeniusDlg::OnBnClickedBtnOpen()
 {
-	CFileDialog dialog(TRUE, NULL, NULL, OFN_FILEMUSTEXIST|OFN_ENABLESIZING, _T("脚本文件(*.mgs)|*.mgs|"), NULL);
+	CFileDialog dialog(TRUE, NULL, NULL, OFN_FILEMUSTEXIST|OFN_ENABLESIZING, _T("脚本文件(*.txt)|*.txt|"), NULL);
 	if (dialog.DoModal() == IDOK)
 	{
 		CString strName = dialog.GetPathName();
-		CEdit * pEditScript = (CEdit *)GetDlgItem(IDC_EDIT_SCRIPT);
-		if (pEditScript && ::IsWindow(pEditScript->GetSafeHwnd()))
+		CListCtrl * pList = (CListCtrl *)GetDlgItem(IDC_LIST_ACTION_RECORD);
+		if (pList && ::IsWindow(pList->GetSafeHwnd()))
 		{
-			pEditScript->Clear();
+			pList->DeleteAllItems();
 			CStdioFile file;
 			file.Open(strName, CFile::modeRead);
 			CString strLine;
 			while(file.ReadString(strLine))
 			{
-				int nLength = pEditScript->SendMessage(WM_GETTEXTLENGTH);  
-				pEditScript->SetSel(nLength,  nLength);  
-				pEditScript->ReplaceSel(strLine + _T("\n"));
+				pList->InsertItem(pList->GetItemCount(), strLine);
 			}
 			file.Close();
 		}
@@ -382,17 +374,14 @@ void CMouseGeniusDlg::StopRunning()
 std::vector<ActionRecord> CMouseGeniusDlg::ActionInfoAnylise()
 {
 	std::vector<ActionRecord> vecRet;
-	CEdit * pEditScript = (CEdit *)GetDlgItem(IDC_EDIT_SCRIPT);
-	if (pEditScript && ::IsWindow(pEditScript->GetSafeHwnd()))
+	CListCtrl * pList = (CListCtrl *)GetDlgItem(IDC_LIST_ACTION_RECORD);
+	if (pList && ::IsWindow(pList->GetSafeHwnd()))
 	{
-		int nLineCount = pEditScript->GetLineCount();
+		int nLineCount = pList->GetItemCount();
 		for (int i = 0; i < nLineCount; i++)
 		{
 			ActionRecord actionRecord;
-			TCHAR tstrLine[1024];
-			memset(tstrLine, 0, 1024 * sizeof(TCHAR));
-			pEditScript->GetLine(i, tstrLine, 1024);
-			CString strLine = tstrLine;
+			CString strLine = pList->GetItemText(i, 0);;
 			int nColonPos = strLine.Find(_T(":"));
 			if (nColonPos < 0)
 			{
