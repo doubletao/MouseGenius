@@ -121,6 +121,7 @@ CMouseGeniusDlg::CMouseGeniusDlg(CWnd* pParent /*=NULL*/)
 	, m_bRunning(FALSE)
 	, m_pThreadRunning(NULL)
 	, m_EventRunning(FALSE, TRUE, 0, 0)
+	, m_bLoop(FALSE)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
@@ -146,6 +147,7 @@ BEGIN_MESSAGE_MAP(CMouseGeniusDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BTN_OPEN, &CMouseGeniusDlg::OnBnClickedBtnOpen)
 	ON_BN_CLICKED(IDC_BTN_SETTING, &CMouseGeniusDlg::OnBnClickedBtnSetting)
 	ON_MESSAGE(MSG_SET_RUNNING_BTN_STATE, OnSetRunningBtnState)
+	ON_BN_CLICKED(IDC_CHK_LOOP, &CMouseGeniusDlg::OnBnClickedChkLoop)
 END_MESSAGE_MAP()
 
 
@@ -313,42 +315,49 @@ UINT CMouseGeniusDlg::ThreadRunningFun( LPVOID pParam )
 	if (pThis)
 	{
 		pThis->PostMessage(MSG_SET_RUNNING_BTN_STATE, 0, 0);
-		std::vector<ActionRecord> vecRecord  = pThis->ActionInfoAnylise();
-		for(UINT i = 0; i < vecRecord.size(); i++)
+		do
 		{
-			BOOL bStop = FALSE;
-			switch(vecRecord[i].action)
+			if (WaitForSingleObject(pThis->m_EventRunning, 0) == WAIT_OBJECT_0)
 			{
-			case EmLButtonDown:
-				SetCursorPos(vecRecord[i].nValue1, vecRecord[i].nValue2);
-				mouse_event(MOUSEEVENTF_LEFTDOWN,0,0,0,0);
 				break;
-			case EmLButtonUp:
-				SetCursorPos(vecRecord[i].nValue1, vecRecord[i].nValue2);
-				mouse_event(MOUSEEVENTF_LEFTUP,0,0,0,0);
-				break;
-			case EmRButtonDown:
-				SetCursorPos(vecRecord[i].nValue1, vecRecord[i].nValue2);
-				mouse_event(MOUSEEVENTF_RIGHTDOWN,0,0,0,0);
-				break;
-			case EmRButtonUp:
-				SetCursorPos(vecRecord[i].nValue1, vecRecord[i].nValue2);
-				mouse_event(MOUSEEVENTF_RIGHTUP,0,0,0,0);
-				break;
-			case EmSleep:
-				if (WaitForSingleObject(pThis->m_EventRunning, vecRecord[i].nValue1) == WAIT_OBJECT_0)
+			}
+			std::vector<ActionRecord> vecRecord = pThis->ActionInfoAnylise();
+			for (UINT i = 0; i < vecRecord.size(); i++)
+			{
+				BOOL bStop = FALSE;
+				switch (vecRecord[i].action)
 				{
-					bStop = TRUE;
+				case EmLButtonDown:
+					SetCursorPos(vecRecord[i].nValue1, vecRecord[i].nValue2);
+					mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+					break;
+				case EmLButtonUp:
+					SetCursorPos(vecRecord[i].nValue1, vecRecord[i].nValue2);
+					mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+					break;
+				case EmRButtonDown:
+					SetCursorPos(vecRecord[i].nValue1, vecRecord[i].nValue2);
+					mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
+					break;
+				case EmRButtonUp:
+					SetCursorPos(vecRecord[i].nValue1, vecRecord[i].nValue2);
+					mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
+					break;
+				case EmSleep:
+					if (WaitForSingleObject(pThis->m_EventRunning, vecRecord[i].nValue1) == WAIT_OBJECT_0)
+					{
+						bStop = TRUE;
+					}
+					break;
+				default:
+					break;
 				}
-				break;
-			default:
-				break;
+				if (bStop)
+				{
+					break;
+				}
 			}
-			if (bStop)
-			{
-				break;
-			}
-		}
+		} while (pThis->m_bLoop);
 		pThis->PostMessage(MSG_SET_RUNNING_BTN_STATE, 1, 0);
 	}
 	return 0;
@@ -461,4 +470,22 @@ LRESULT CMouseGeniusDlg::OnSetRunningBtnState( WPARAM wParam, LPARAM lParam )
 		m_bRunning = TRUE;
 	}
 	return 0;
+}
+
+
+void CMouseGeniusDlg::OnBnClickedChkLoop()
+{
+	CButton * pChk = NULL;
+	pChk = (CButton *)GetDlgItem(IDC_CHK_LOOP);
+	if (pChk && ::IsWindow(pChk->GetSafeHwnd()))
+	{
+		if (pChk->GetCheck())
+		{
+			m_bLoop = TRUE;
+		}
+		else
+		{
+			m_bLoop = FALSE;
+		}
+	}
 }

@@ -48,6 +48,7 @@ public:
 protected:
 	HICON m_hIcon;
 	BOOL m_bRunning;
+	BOOL m_bLoop;
 	CEvent m_EventRunning;
 	CWinThread * m_pThreadRunning;
 	static UINT ThreadRunningFun(LPVOID pParam);
@@ -67,4 +68,5 @@ public:
 	afx_msg void OnBnClickedBtnOpen();
 	afx_msg void OnBnClickedBtnSetting();
 	afx_msg LRESULT OnSetRunningBtnState(WPARAM wParam, LPARAM lParam);
+	afx_msg void OnBnClickedChkLoop();
 };
